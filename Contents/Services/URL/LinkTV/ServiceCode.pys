@@ -3,74 +3,74 @@ RE_JSON          = Regex('experienceJSON *= *(\{.*\})')
 
 ##########################################################################################
 def NormalizeURL(url):
-	return url
+    return url
 
 ##########################################################################################
 def MetadataObjectForURL(url):
-	videoDetails = GetVideoDetails(url)
-	
-	return VideoClipObject(
-			title = videoDetails['title'],
-			summary = videoDetails['summary'],
-			thumb = videoDetails['thumb'],
-			duration = videoDetails['duration']
-	)
+    videoDetails = GetVideoDetails(url)
+    
+    return VideoClipObject(
+            title = videoDetails['title'],
+            summary = videoDetails['summary'],
+            thumb = videoDetails['thumb'],
+            duration = videoDetails['duration']
+    )
 
 ##########################################################################################
 def MediaObjectsForURL(url):
-	return [
-		MediaObject( 
-			resolution              = 'sd',               
-			audio_channels          = 2,
-			optimized_for_streaming = True,
-			parts                   = [
-				PartObject(
-					key = 
-						Callback(
-							PlayVideo,
-							url = url
-						)
-				)
-			]
-		)
-	]
+    return [
+        MediaObject( 
+            video_resolution        = 'sd',               
+            audio_channels          = 2,
+            optimized_for_streaming = True,
+            parts                   = [
+                PartObject(
+                    key = 
+                        Callback(
+                            PlayVideo,
+                            url = url
+                        )
+                )
+            ]
+        )
+    ]
 
 ##########################################################################################
 def PlayVideo(url):
-	videoDetails = GetVideoDetails(url, True)
-	
-	return Redirect(videoDetails['url'])
+    videoDetails = GetVideoDetails(url, True)
+    
+    return Redirect(videoDetails['url'])
 
 ##########################################################################################
 def GetVideoDetails(url, getURL = False):
-	content   = HTTP.Request(url).content
-	videoJSON = JSON.ObjectFromString(RE_VIDEO_DETAILS.findall(content)[0])
+    content   = HTTP.Request(url).content
+    videoJSON = JSON.ObjectFromString(RE_VIDEO_DETAILS.findall(content)[0])
 
-	videoDetails = {}
+    videoDetails = {}
 
-	if getURL:
-		streamDetailsURL = 'http://c.brightcove.com/services/viewer/htmlFederated?width=480&height=271&flashID=flash_widget_6&playerID=' + str(int(videoJSON['brightcovePlayerId'])) + '&playerKey=' + videoJSON['brightcovePlayerKey'] + '&isVid=true&isUI=true&dynamicStreaming=true&includeAPI=true&templateLoadHandler=BCPlayerOnTemplateLoad&@videoPlayer=' + videoJSON['permalinkId'] + '&autoStart=&debuggerID='
+    if getURL:
+        streamDetailsURL = 'http://c.brightcove.com/services/viewer/htmlFederated?width=480&height=271&flashID=flash_widget_6&playerID=' + str(int(videoJSON['brightcovePlayerId'])) + '&playerKey=' + videoJSON['brightcovePlayerKey'] + '&isVid=true&isUI=true&dynamicStreaming=true&includeAPI=true&templateLoadHandler=BCPlayerOnTemplateLoad&@videoPlayer=' + videoJSON['permalinkId'] + '&autoStart=&debuggerID='
 
-		content    = HTTP.Request(streamDetailsURL).content
-		streamJSON = JSON.ObjectFromString(RE_JSON.findall(content)[0])
-		
-		maxEncodingRateFound = 0
-		
-		if 'renditions' in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO'] and len(streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['renditions']) > 0:
-			for rendition in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['renditions']:
-				if rendition['encodingRate'] > maxEncodingRateFound:
-					maxEncodingRateFound = rendition['encodingRate']
-					videoDetails['url']  = rendition['defaultURL']
-					
-		elif 'FLVFullLengthURL' in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO'] and streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['FLVFullLengthURL']:
-			videoDetails['url'] = streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['FLVFullLengthURL']
-		else:
-			raise Ex.MediaNotAvailable
-		
-	videoDetails['title']    = videoJSON['title']
-	videoDetails['summary']  = videoJSON['description']
-	videoDetails['thumb']    = videoJSON['posterImage'].replace("jpg_90", "jpg_400")
-	videoDetails['duration'] = videoJSON['duration'] * 1000
-	
-	return videoDetails
+        content    = HTTP.Request(streamDetailsURL).content
+        streamJSON = JSON.ObjectFromString(RE_JSON.findall(content)[0])
+        
+        maxEncodingRateFound = 0
+        
+        if 'renditions' in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO'] and len(streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['renditions']) > 0:
+            for rendition in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['renditions']:
+                if rendition['encodingRate'] > maxEncodingRateFound:
+                    maxEncodingRateFound = rendition['encodingRate']
+                    videoDetails['url']  = rendition['defaultURL']
+                    
+        elif 'FLVFullLengthURL' in streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO'] and streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['FLVFullLengthURL']:
+            videoDetails['url'] = streamJSON['data']['programmedContent']['videoPlayer']['mediaDTO']['FLVFullLengthURL']
+        else:
+            raise Ex.MediaNotAvailable
+        
+    videoDetails['title']    = videoJSON['title']
+    videoDetails['summary']  = videoJSON['description']
+    videoDetails['thumb']    = videoJSON['posterImage'].replace("jpg_90", "jpg_400")
+    videoDetails['duration'] = videoJSON['duration'] * 1000
+    
+    return videoDetails
 
